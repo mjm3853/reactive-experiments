@@ -1,10 +1,14 @@
-function component() {
-    let element = document.createElement('div');
+import { of } from 'rxjs';
+import { ajax } from 'rxjs/ajax';
 
-    // Lodash, currently included via a script, is required for this line to work
-    element.innerHTML = 'Hello World';
+const requestStream = of('https://api.github.com/users');
 
-    return element;
-}
-
-document.body.appendChild(component());
+requestStream.subscribe(
+    (requestUrl) => {
+        ajax.getJSON(requestUrl).subscribe(
+            (res) => console.log(res),
+            (err) => console.log(err),
+        );
+    },
+    (err) => console.log(err),
+);
