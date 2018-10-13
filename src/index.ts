@@ -1,6 +1,6 @@
-import { fromEvent, of } from 'rxjs';
+import { from, fromEvent, of } from 'rxjs';
 import { ajax } from 'rxjs/ajax';
-import { map, merge, startWith } from 'rxjs/operators';
+import { map, merge, startWith, take } from 'rxjs/operators';
 
 const refreshButton = document.querySelector('.refresh');
 const users = document.querySelector('.users');
@@ -12,17 +12,51 @@ const requestStream = refreshClickStream.pipe(
         return `https://api.github.com/users?since=${randomOffset}`;
     }),
 );
-function addParagraph(body: string) {
-    const p = document.createElement('p');
-    p.innerHTML = body;
-    users.appendChild(p);
-}
 
-function handleRefresh(body: any[]) {
+requestStream.subscribe(
+    (requestUrl) => {
+        const responseStream = ajax.getJSON(requestUrl).pipe(
+            map((res) => res),
+            merge(
+                of(null),
+            ),
+        );
+
+        responseStream.subscribe(
+            (res: any[]) => {
+                if (res) {
+                    const usersStream = from(res).pipe(take(3));
+
+                    usersStream.subscribe(
+                        (user) => {
+                            handleUser(user);
+                        },
+                        (err) => {
+                            handleError(err);
+                        },
+                    );
+                } else {
+                    clearUsers();
+                }
+            },
+            (err) => {
+                handleError(err);
+            },
+        );
+    },
+    (err) => {
+        handleError(err);
+    },
+);
+
+function handleUser(body: any) {
     if (body) {
-        body.forEach((item) => {
-            addParagraph(item.login);
-        });
+        if (body.login) {
+            addParagraph(body.login);
+        } else {
+            const val = JSON.stringify(body);
+            addParagraph(val);
+        }
     } else {
         clearUsers();
     }
@@ -37,33 +71,14 @@ function handleError(body: string) {
     }
 }
 
+function addParagraph(body: string) {
+    const p = document.createElement('p');
+    p.innerHTML = body;
+    users.appendChild(p);
+}
+
 function clearUsers() {
     while (users.hasChildNodes()) {
         users.removeChild(users.firstChild);
     }
 }
-
-requestStream.subscribe(
-    (requestUrl) => {
-        const responseStream = ajax.getJSON(requestUrl).pipe(
-            map((res: any[]) => {
-                return res.slice(0, 3);
-            }),
-            merge(
-                of(null),
-            ),
-        );
-
-        responseStream.subscribe(
-            (res: any[]) => {
-                handleRefresh(res);
-            },
-            (err) => {
-                handleError(err);
-            },
-        );
-    },
-    (err) => {
-        handleError(err);
-    },
-);
