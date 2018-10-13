@@ -1,7 +1,18 @@
-import { of } from 'rxjs';
+import { fromEvent, of } from 'rxjs';
+import { startWith, map } from 'rxjs/operators';
 import { ajax } from 'rxjs/ajax';
 
-const requestStream = of('https://api.github.com/users');
+const refreshButton = document.querySelector('.refresh');
+const refreshClickStream = fromEvent(refreshButton, 'click');
+const requestStream = refreshClickStream.pipe(
+    startWith('startup click'),
+    map(
+        () => {
+            let randomOffset = Math.floor(Math.random() * 500);
+            return `https://api.github.com/users?since=${randomOffset}`;
+        }
+    )
+)
 
 requestStream.subscribe(
     (requestUrl) => {
