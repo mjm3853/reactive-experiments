@@ -1,10 +1,12 @@
 import { from, fromEvent, of } from 'rxjs';
 import { ajax } from 'rxjs/ajax';
-import { map, merge, startWith, take } from 'rxjs/operators';
+import { map, merge, mergeMap, startWith, take } from 'rxjs/operators';
+
+const users = document.querySelector('.users');
 
 const refreshButton = document.querySelector('.refresh');
-const users = document.querySelector('.users');
 const refreshClickStream = fromEvent(refreshButton, 'click');
+
 const requestStream = refreshClickStream.pipe(
     startWith('startup click'),
     map(() => {
@@ -13,36 +15,31 @@ const requestStream = refreshClickStream.pipe(
     }),
 );
 
-requestStream.subscribe(
-    (requestUrl) => {
-        const responseStream = ajax.getJSON(requestUrl).pipe(
+const responseStream = requestStream.pipe(
+    mergeMap((req) => {
+        return ajax.getJSON(req).pipe(
             map((res) => res),
             merge(
                 of(null),
             ),
         );
+    }),
+);
 
-        responseStream.subscribe(
-            (res: any[]) => {
-                if (res) {
-                    const usersStream = from(res).pipe(take(3));
+const userStream = responseStream.pipe(
+    mergeMap((req) => {
+        if (req) {
+            return from(req).pipe(take(3));
+        } else {
+            clearUsers();
+            return of(null);
+        }
+    }),
+);
 
-                    usersStream.subscribe(
-                        (user) => {
-                            handleUser(user);
-                        },
-                        (err) => {
-                            handleError(err);
-                        },
-                    );
-                } else {
-                    clearUsers();
-                }
-            },
-            (err) => {
-                handleError(err);
-            },
-        );
+userStream.subscribe(
+    (user) => {
+        handleUser(user);
     },
     (err) => {
         handleError(err);
