@@ -1,5 +1,7 @@
 # reactive-experiments
 
+Webpack | Typescript | RxJS
+
 ```
 npm install
 npm run build 
